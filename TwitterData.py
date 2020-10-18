@@ -45,7 +45,7 @@ LABELS:
 """
 
 
-def saveTweetsToFile(fields, tweets, label=0):
+def saveTweetsToFile(fields, tweets, label=0, append=True):
     # List with tweets and labels
     tweetsWithLabels = []
 
@@ -55,19 +55,29 @@ def saveTweetsToFile(fields, tweets, label=0):
         tweet = tweet.replace("\n", ' ').replace('#', '')
         tweetsWithLabels.append([tweet, label])
 
-    # Write to CSV file with utf-8 encoding
-    with open('tweetList.csv', 'w', encoding="utf-8") as file:
-        # Create a CSV writer
-        csvWriter = csv.writer(file)
-        # Write the fields (1st row in CSV file)
-        csvWriter.writerow(fields)
-        # Write the tweets and labels
-        csvWriter.writerows(tweetsWithLabels)
-        # Close the file
-        file.close()
+    if not append:
+        # Write to CSV file with utf-8 encoding
+        with open('tweetList.csv', 'w', encoding="utf-8") as file:
+            # Create a CSV writer
+            csvWriter = csv.writer(file)
+            # Write the fields (1st row in CSV file)
+            csvWriter.writerow(fields)
+            # Write the tweets and labels
+            csvWriter.writerows(tweetsWithLabels)
+            # Close the file
+            file.close()
+    else:
+        with open('tweetList.csv', 'a', encoding="utf-8") as file:
+            csvWriter = csv.writer(file)
+            # Write the fields (1st row in CSV file)
+            csvWriter.writerow(fields)
+            # Write the tweets and labels
+            csvWriter.writerows(tweetsWithLabels)
+            # Close the file
+            file.close()
 
     # Use pandas to remove the empty rows
-    df = pd.read_csv('tweetList.csv')
+    df = pd.read_csv('tweetList.csv', sep=',', index_col=0)
     df.to_csv('tweetList.csv')
 
 
