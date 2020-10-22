@@ -1,7 +1,10 @@
+import os
 import snscrape.modules.twitter as snstwitter
 import csv
 from AnalyseSentiment.AnalyseSentiment import AnalyseSentiment
 import pandas as pd
+
+from TextProcess import cleanText
 
 """
  Method to get tweets based on a keyword, the amount, and sentiment factor
@@ -45,19 +48,19 @@ LABELS:
 """
 
 
-def saveTweetsToFile(fields, tweets, label=0, append=True):
+def saveTweetsToFile(fields, tweets, filename, label=0, append=True):
     # List with tweets and labels
     tweetsWithLabels = []
 
     # Iterate through tweets to add labels
     for tweet in tweets:
         # Replace return characters and hastags with empty space
-        tweet = tweet.replace("\n", ' ').replace('#', '')
+        tweet = cleanText(tweet)
         tweetsWithLabels.append([tweet, label])
 
     if not append:
         # Write to CSV file with utf-8 encoding
-        with open('tweetList.csv', 'w', encoding="utf-8") as file:
+        with open('Data' + os.sep + filename, 'w', encoding="utf-8") as file:
             # Create a CSV writer
             csvWriter = csv.writer(file)
             # Write the fields (1st row in CSV file)
@@ -67,7 +70,7 @@ def saveTweetsToFile(fields, tweets, label=0, append=True):
             # Close the file
             file.close()
     else:
-        with open('tweetList.csv', 'a', encoding="utf-8") as file:
+        with open('Data' + os.sep + filename, 'a', encoding="utf-8") as file:
             csvWriter = csv.writer(file)
             # Write the fields (1st row in CSV file)
             csvWriter.writerow(fields)
@@ -77,10 +80,10 @@ def saveTweetsToFile(fields, tweets, label=0, append=True):
             file.close()
 
     # Use pandas to remove the empty rows
-    df = pd.read_csv('tweetList.csv', sep=',', index_col=0)
-    df.to_csv('tweetList.csv')
+    df = pd.read_csv('Data' + os.sep + filename, sep=',', index_col=0)
+    df.to_csv('Data' + os.sep + filename)
 
 
 if __name__ == '__main__':
-    tweets = getTweets("Damn Depression", 50)
-    saveTweetsToFile(['Tweets, Label'], tweets, 1)
+    tweets = getTweets("Damn Depression", 15000)
+    saveTweetsToFile(['Tweets, Label'], tweets, 'trainData.csv', 1)
