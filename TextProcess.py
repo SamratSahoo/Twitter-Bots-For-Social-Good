@@ -28,6 +28,7 @@ def removeEmojis(text):
 
 def cleanText(text):
     text = text.replace("\n", ' ').replace('#', '')
+    text = re.sub('@[^\s]+', '', text)
     text = re.sub(r'(https|http)?:\/\/(\w|\.|\/|\?|\=|\&|\%)*\b', '', text, flags=re.MULTILINE)
     text = removeEmojis(text)
     text = tokenizeText(text)
