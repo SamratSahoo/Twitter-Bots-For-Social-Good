@@ -10,11 +10,14 @@ from TextProcess import cleanText
 def checkExisting(filename, string, tweetList):
     try:
         data = pd.read_csv('Data' + os.sep + filename)
+        data2 = pd.read_csv('Data' + os.sep + 'train2Data.csv')
+        tweets2 = data2._get_column_array(0)
         tweets = data._get_column_array(0)
-        return not cleanText(string) in tweets and string not in tweetList
+        return not cleanText(string) in tweets and string not in tweetList and not cleanText(string) in tweets2
     except IndexError as e:
         print(e)
         return False
+
 
 """
  Method to get tweets based on a keyword, the amount, and sentiment factor
@@ -39,10 +42,12 @@ def getTweets(keyword, count, sentimentFactor=-0.9, filename='trainData.csv'):
             exclusionTest = True
             with open('ExclusionList.txt') as f:
                 exclusionList = f.readlines()
+
             newExclusionList = []
             for word in exclusionList:
                 word = word.replace('\n', '')
                 newExclusionList.append(word)
+
             # For Negative sentiment tweets OR For Positive/Neutral sentiment tweets
             if analyzer.Analyse(tweet.content)['overall_sentiment_score'] < sentimentFactor < 0 or \
                     0 <= sentimentFactor <= analyzer.Analyse(tweet.content)['overall_sentiment_score']:
@@ -52,11 +57,12 @@ def getTweets(keyword, count, sentimentFactor=-0.9, filename='trainData.csv'):
                         exclusionTest = False
 
                 # if it passes exclusion constraints
-                if exclusionTest and langid.classify(tweet.content)[0] == 'en' and checkExisting(filename,
-                                                                                                 tweet.content,
-                                                                                                 tweetList):
+                if exclusionTest \
+                        and langid.classify(tweet.content)[0] == 'en' \
+                        and checkExisting(filename, tweet.content, tweetList) \
+                        and len(cleanText(tweet.content)) > 60:
                     # Append to tweet list and increment counter
-                    tweetList.append(tweet.content)
+                    tweetList.append(cleanText(tweet.content))
                     realCounter += 1
 
         except AttributeError as exc:
@@ -81,7 +87,6 @@ def saveTweetsToFile(fields, tweets, filename, label=0, append='a'):
     # Iterate through tweets to add labels
     for tweet in tweets:
         # Replace return characters and hastags with empty space
-        tweet = cleanText(tweet)
         tweetsWithLabels.append([tweet, label])
 
     # Write to CSV file with utf-8 encoding
@@ -101,13 +106,43 @@ def saveTweetsToFile(fields, tweets, filename, label=0, append='a'):
     df.to_csv('Data' + os.sep + filename)
 
 
-if __name__ == '__main__':
-    # Get depression tweets not already in trainData.csv
-    # tweets = getTweets("Damn Depression", 15000, sentimentFactor=-0.5, filename='trainData.csv')
-    # Append of Test Data
-    # saveTweetsToFile(['Tweets', 'Label'], tweets, 'testData.csv', 1, append='w')
+def getData(query, file, sentimentFactor, count, appendMode, label):
+    tweets = getTweets(keyword=query, count=count, sentimentFactor=sentimentFactor, filename=file)
+    Labels = ['Tweets', 'Label']
+    if 'train' in file:
+        saveTweetsToFile(fields=Labels, tweets=tweets, filename=file.replace('train', 'test'), label=label,
+                         append=appendMode)
+    else:
+        saveTweetsToFile(fields=Labels, tweets=tweets, filename=file.replace('test', 'train'), label=label,
+                         append=appendMode)
 
-    # Get regular tweets not already in trainData.csv
-    tweets = getTweets("okay", 15000, sentimentFactor=0.1, filename='trainData.csv')
-    # Append of Test Data
-    saveTweetsToFile(['Tweets', 'Label'], tweets, 'testData.csv', 0, 'a')
+
+if __name__ == '__main__':
+    # Get depression tweets
+    getData(query="Damn Depression", file='train2Data.csv', sentimentFactor=-0.3,
+            count=2000, appendMode='a', label=1)
+
+    getData(query="Stressed and Depressed", file='train2Data.csv', sentimentFactor=-0.3,
+            count=2000, appendMode='a', label=1)
+
+    getData(query="Stressed and want to cry", file='train2Data.csv', sentimentFactor=-0.3,
+            count=2000, appendMode='a', label=1)
+
+    getData(query="depressed and want to cry", file='train2Data.csv', sentimentFactor=-0.3,
+            count=2000, appendMode='a', label=1)
+
+    getData(query="I feel miserable today", file='train2Data.csv', sentimentFactor=-0.3,
+            count=2000, appendMode='a', label=1)
+
+    getData(query="I suffer from severe depression", file='train2Data.csv', sentimentFactor=-0.3,
+            count=2000, appendMode='a', label=1)
+
+    getData(query="My depression hurts", file='train2Data.csv', sentimentFactor=-0.3,
+            count=2000, appendMode='a', label=1)
+
+    getData(query="I absolutely hate life", file='train2Data.csv', sentimentFactor=-0.3,
+            count=2000, appendMode='a', label=1)
+
+    # Get regular tweets
+    getData(query="the", file='train2Data.csv', sentimentFactor=0.2,
+            count=15000, appendMode='a', label=0)
