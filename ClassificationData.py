@@ -10,7 +10,7 @@ from TextProcess import cleanText
 def checkExisting(filename, string, tweetList):
     try:
         data = pd.read_csv('Data' + os.sep + filename)
-        data2 = pd.read_csv('Data' + os.sep + 'train2Data.csv')
+        data2 = pd.read_csv('Data' + os.sep + 'trainData.csv')
         tweets2 = data2._get_column_array(0)
         tweets = data._get_column_array(0)
         return not cleanText(string) in tweets and string not in tweetList and not cleanText(string) in tweets2
@@ -119,30 +119,30 @@ def getData(query, file, sentimentFactor, count, appendMode, label):
 
 if __name__ == '__main__':
     # Get depression tweets
-    getData(query="Damn Depression", file='train2Data.csv', sentimentFactor=-0.3,
+    getData(query="Damn Depression", file='trainData.csv', sentimentFactor=-0.3,
             count=2000, appendMode='a', label=1)
 
-    getData(query="Stressed and Depressed", file='train2Data.csv', sentimentFactor=-0.3,
+    getData(query="Stressed and Depressed", file='trainData.csv', sentimentFactor=-0.3,
             count=2000, appendMode='a', label=1)
 
-    getData(query="Stressed and want to cry", file='train2Data.csv', sentimentFactor=-0.3,
+    getData(query="Stressed and want to cry", file='trainData.csv', sentimentFactor=-0.3,
             count=2000, appendMode='a', label=1)
 
-    getData(query="depressed and want to cry", file='train2Data.csv', sentimentFactor=-0.3,
+    getData(query="depressed and want to cry", file='trainData.csv', sentimentFactor=-0.3,
             count=2000, appendMode='a', label=1)
 
-    getData(query="I feel miserable today", file='train2Data.csv', sentimentFactor=-0.3,
+    getData(query="I feel miserable today", file='trainData.csv', sentimentFactor=-0.3,
             count=2000, appendMode='a', label=1)
 
-    getData(query="I suffer from severe depression", file='train2Data.csv', sentimentFactor=-0.3,
+    getData(query="I suffer from severe depression", file='trainData.csv', sentimentFactor=-0.3,
             count=2000, appendMode='a', label=1)
 
-    getData(query="My depression hurts", file='train2Data.csv', sentimentFactor=-0.3,
+    getData(query="My depression hurts", file='trainData.csv', sentimentFactor=-0.3,
             count=2000, appendMode='a', label=1)
 
-    getData(query="I absolutely hate life", file='train2Data.csv', sentimentFactor=-0.3,
+    getData(query="I absolutely hate life", file='trainData.csv', sentimentFactor=-0.3,
             count=2000, appendMode='a', label=1)
 
     # Get regular tweets
-    getData(query="the", file='train2Data.csv', sentimentFactor=0.2,
+    getData(query="the", file='trainData.csv', sentimentFactor=0.2,
             count=15000, appendMode='a', label=0)
