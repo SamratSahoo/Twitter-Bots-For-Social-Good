@@ -23,7 +23,7 @@ class DepressionClassifier():
         else:
             self.model = self.loadModel()
 
-        self.model.summary()
+        # self.model.summary()
 
     def loadData(self, fileName):
         data = pd.read_csv('Data' + os.sep + fileName)

@@ -13,6 +13,11 @@ class TwitterBot():
         self.username = username
         self.classifier = DepressionClassifier(loadMode=True)
 
+    '''
+    Method to send a Tweet
+    
+    '''
+
     def postTweet(self, tweet):
         self.api.update_status(tweet)
 
@@ -56,15 +61,18 @@ class TwitterBot():
 
         return usersToDM
 
-    def startConversation(self, username=None, uniqueId=None):
+    def startConversation(self, tweetId, username=None, uniqueId=None):
         user = self.api.get_user(username)
         print(user.id_str)
-        print(self.api.list_direct_messages(user.id_str))
+        print(self.api.list_direct_messages(user.id_str)[0].message_create['target']['recipient_id'])
+
         if user.id_str != self.api.list_direct_messages(user.id_str)[0].message_create['target']['recipient_id']:
             self.sendDirectMessage(
                 "Hello, I am MedellaAI, an artificial intelligence bot built to help those in need of mental health"
                 " attention. \n\nI recently detected a potential Tweet that indicated you may want to seek help. If you"
-                " need support or would like to talk, I am here for you!", username=username, uniqueId=uniqueId)
+                " need support or would like to talk, I am here for you! \n\n https://twitter.com/twitter/statuses/" + str(
+                    tweetId),
+                username=username, uniqueId=uniqueId)
 
     def readPreviousMessages(self):
         pass
@@ -75,7 +83,7 @@ class TwitterBot():
 
 if __name__ == '__main__':
     botInstance = TwitterBot(uniqueId=1317999444177129476, username="MedellaAI")
-    botInstance.startConversation(username="PCodelaborate")
+    botInstance.startConversation(tweetId=1318959683688927232, username="Samratsahoo2013")
     # botInstance.postTweet("Hello World! This Tweet was sent from Python!")
 
 # Get all followers of account === DONE

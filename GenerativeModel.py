@@ -1,19 +1,19 @@
-import tensorflow as tf
-from transformers import GPT2Config, TFGPT2LMHeadModel, GPT2Tokenizer
+from chatterbot import ChatBot
+from chatterbot.trainers import ChatterBotCorpusTrainer
 
-tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-tokenizer.add_tokens({
-    "eos_token": "</s>",
-    "bos_token": "<s>",
-    "unk_token": "<unk>",
-    "pad_token": "<pad>",
-    "mask_token": "<mask>"
-})
 
-config = GPT2Config(
-    vocab_size=tokenizer.vocab_size,
-    bos_token_id=tokenizer.bos_token_id,
-    eos_token_id=tokenizer.eos_token_id
-)
+class DepressionCounselor:
+    def __init__(self):
+        self.bot = ChatBot("MedellaAI")
+        self.trainer = ChatterBotCorpusTrainer(self.bot)
 
-model = TFGPT2LMHeadModel(config)
+    def trainBot(self):
+        self.trainer.train("chatterbot.corpus.english.conversations")
+
+    def getResponse(self, text):
+        return self.bot.get_response(text)
+
+
+if __name__ == '__main__':
+    counselor = DepressionCounselor()
+    print(counselor.getResponse('I am good  '))
