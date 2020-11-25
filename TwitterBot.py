@@ -62,17 +62,22 @@ class TwitterBot():
         return usersToDM
 
     def startConversation(self, tweetId, username=None, uniqueId=None):
-        user = self.api.get_user(username)
-        print(user.id_str)
-        print(self.api.list_direct_messages(user.id_str)[0].message_create['target']['recipient_id'])
-
-        if user.id_str != self.api.list_direct_messages(user.id_str)[0].message_create['target']['recipient_id']:
-            self.sendDirectMessage(
-                "Hello, I am MedellaAI, an artificial intelligence bot built to help those in need of mental health"
-                " attention. \n\nI recently detected a potential Tweet that indicated you may want to seek help. If you"
-                " need support or would like to talk, I am here for you! \n\n https://twitter.com/twitter/statuses/" + str(
-                    tweetId),
-                username=username, uniqueId=uniqueId)
+        if username is None:
+            if uniqueId != self.api.list_direct_messages(uniqueId)[0].message_create['target']['recipient_id']:
+                self.sendDirectMessage(
+                    "Hello, I am MedellaAI, an artificial intelligence bot built to help those in need of mental health"
+                    " attention. \n\nI recently detected a potential Tweet that indicated you may want to seek help. If you"
+                    " need support or would like to talk, I am here for you! \n\n https://twitter.com/twitter/statuses/" + str(
+                        tweetId), username=username, uniqueId=uniqueId)
+        else:
+            user = self.api.get_user(username)
+            if user.id_str != self.api.list_direct_messages(user.id_str)[0].message_create['target']['recipient_id']:
+                self.sendDirectMessage(
+                    "Hello, I am MedellaAI, an artificial intelligence bot built to help those in need of mental health"
+                    " attention. \n\nI recently detected a potential Tweet that indicated you may want to seek help. If you"
+                    " need support or would like to talk, I am here for you! \n\n https://twitter.com/twitter/statuses/" + str(
+                        tweetId),
+                    username=username, uniqueId=uniqueId)
 
     def readPreviousMessages(self):
         pass
@@ -80,10 +85,19 @@ class TwitterBot():
     def sendNextReply(self, username=None, uniqueId=None):
         pass
 
+    def main(self):
+        # First Follow Back All
+        self.followBackAll()
+        # Analyze top 10 Tweets on feed
+        userTweet = self.analyzeFeed()
+        # Iterate through and check which Tweets are depression based
+        for tweetId in userTweet.keys():
+            self.startConversation(tweetId=tweetId, uniqueId=userTweet[tweetId])
+
 
 if __name__ == '__main__':
     botInstance = TwitterBot(uniqueId=1317999444177129476, username="MedellaAI")
-    botInstance.startConversation(tweetId=1318959683688927232, username="Samratsahoo2013")
+    botInstance.main()
     # botInstance.postTweet("Hello World! This Tweet was sent from Python!")
 
 # Get all followers of account === DONE

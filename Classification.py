@@ -15,7 +15,7 @@ class DepressionClassifier():
         self.embedding = "https://tfhub.dev/google/nnlm-en-dim50/2"
         self.hubLayer = hub.KerasLayer(self.embedding, input_shape=[],
                                        dtype=tf.string, trainable=True)
-        self.modelName = 'model2.h5'
+        self.modelName = 'model.h5'
         if not loadMode:
             # Actual Model built with Keras
             self.model = self.initModel()
