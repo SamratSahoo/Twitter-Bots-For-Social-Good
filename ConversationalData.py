@@ -40,7 +40,7 @@ class RedditScraper:
                 comment = cleanText(submission.comments.list()[int(self.modComment)].body.replace('\n', ' '))
 
                 # Filter out shorter responses for better data
-                if len(title) > 60 and len(comment) > 90 and \
+                if len(title) > 60 and len(comment) > 75 and \
                         not self.checkExisting(string=title, file='Data' + os.sep + 'ConversationalData.csv') \
                         and [title, comment] not in responseReplies:
                     responseReplies.append([title, comment])
