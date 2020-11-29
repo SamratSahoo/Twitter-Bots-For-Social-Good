@@ -70,5 +70,5 @@ if __name__ == '__main__':
     # Step 2: Convert numbers to multidimensional embeddings
     # Step 3: Feed through Neural Net
     classifer = DepressionClassifier(loadMode=True)
-    print(classifer.predictDepression("To get close to another you have to take off your armor. It takes more  to be soft than tough.  reduces"))
+    print(classifer.predictDepression("I am so sad to hear of your loss"))
     classifer.evaluateModel()

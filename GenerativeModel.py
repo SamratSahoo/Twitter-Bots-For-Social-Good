@@ -47,8 +47,8 @@ class VOC:
     def trim(self, minimumCount):
         if self.trimmed:
             return
-
         self.trimmed = True
+
         keepWords = []
 
         for key, value in self.word2count.items():
@@ -67,10 +67,13 @@ class VOC:
 class DataPreprocessor:
     def __init__(self, trainFile='ConversationalData.csv'):
         self.trainFile = trainFile
-        self.data = self.loadData(self.trainFile)
+        self.corpusName = self.trainFile.replace('.csv', '')
+        # self.data = self.loadData(self.trainFile)
         self.voc, self.pairs = self.loadPrepareData(dataFile=self.trainFile,
-                                                    corpusName=self.trainFile.replace('.csv', ''))
-        self.trimmedPairs = self.trimRareWords(self.pairs)
+                                                    corpusName=self.corpusName)
+
+        self.trimmedPairs = self.pairs
+        self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     def showData(self, filename, n):
         with open('Data' + os.sep + filename, encoding='utf-8') as file:
@@ -134,8 +137,8 @@ class DataPreprocessor:
         self.voc.trim(MIN_COUNT)
         keepPairs = []
         for pair in pairs:
-            inputSequence = []
-            outputSequence = []
+            inputSequence = pair[0]
+            outputSequence = pair[1]
             keepInput = True
             keepOutput = True
 
@@ -157,8 +160,8 @@ class DataPreprocessor:
     def indexesFromSentences(self, sentence):
         return [self.voc.word2index[word] for word in sentence.split(' ')] + [EOS_TOKEN]
 
-    def zeroPadding(self, list, fillValue=PAD_TOKEN):
-        return list(itertools.zip_longest(*list, fillvalue=fillValue))
+    def zeroPadding(self, listE, fillValue=PAD_TOKEN):
+        return list(itertools.zip_longest(*listE, fillvalue=fillValue))
 
     def binaryMatrix(self, list, value=PAD_TOKEN):
         matrix = []
@@ -166,23 +169,24 @@ class DataPreprocessor:
             matrix.append([])
             for token in seq:
                 if token == PAD_TOKEN:
-                    matrix.append(0)
+                    matrix[i].append(0)
                 else:
-                    matrix.append(1)
+                    matrix[i].append(1)
 
         return matrix
 
-    def inputVar(self, list):
-        indexesBatch = [self.indexesFromSentences(self.voc, sentence) for sentence in list]
+    def inputVar(self, listE):
+        listE = [self.unicodeToAscii(sentence) for sentence in listE]
+        indexesBatch = [self.indexesFromSentences(sentence) for sentence in listE]
         lengths = torch.tensor([len(indexes) for indexes in indexesBatch])
-        padList = self.zeroPadding(list)
+        padList = self.zeroPadding(indexesBatch)
         padVar = torch.LongTensor(padList)
         return padVar, lengths
 
-    def outputVar(self, list):
-        indexesBatch = [self.indexesFromSentences(self.voc, sentence) for sentence in list]
+    def outputVar(self, listE):
+        indexesBatch = [self.indexesFromSentences(sentence) for sentence in listE]
         maxTagetLength = max([len(indexes) for indexes in indexesBatch])
-        padList = self.zeroPadding(list)
+        padList = self.zeroPadding(indexesBatch)
         mask = self.binaryMatrix(padList)
         mask = torch.BoolTensor(mask)
         padVar = torch.LongTensor(padList)
@@ -200,7 +204,7 @@ class DataPreprocessor:
 
 
 class EncoderRNN(nn.Module):
-    def __init__(self, hiddenSize, embedding, nLayers=1, dropout=0):
+    def __init__(self, hiddenSize, embedding, nLayers=1, dropout=0.1):
         super(EncoderRNN, self).__init__()
         self.nLayers = nLayers
         self.hiddenSize = hiddenSize
@@ -213,7 +217,7 @@ class EncoderRNN(nn.Module):
         packed = nn.utils.rnn.pack_padded_sequence(embedded, inputLengths)
         outputs, hidden = self.gru(packed, hidden)
         outputs, _ = nn.utils.rnn.pad_packed_sequence(outputs)
-        outputs = outputs[:, :, :, self.hiddenSize] + outputs[:, :, self.hiddenSize, :]
+        outputs = outputs[:, :, :self.hiddenSize] + outputs[:, :, self.hiddenSize:]
         return outputs, hidden
 
 
@@ -223,7 +227,7 @@ class Attn(nn.Module):
         self.method = method
         self.hiddenSize = hiddenSize
         if self.method == 'general':
-            self.attn = nn.Liner(self.hiddenSize, hiddenSize)
+            self.attn = nn.Linear(self.hiddenSize, hiddenSize)
         elif self.method == 'concat':
             self.attn = nn.Linear(self.hiddenSize * 2, hiddenSize)
             self.v = nn.Parameter(torch.FloatTensor(hiddenSize))
@@ -244,7 +248,7 @@ class Attn(nn.Module):
             attnEnergies = self.generalScore(hidden, encoderOutputs)
         elif self.method == 'concat':
             attnEnergies = self.concatScore(hidden, encoderOutputs)
-        if self.method == 'dot':
+        else:
             attnEnergies = self.dotScore(hidden, encoderOutputs)
 
         attnEnergies = attnEnergies.t()
@@ -253,7 +257,7 @@ class Attn(nn.Module):
 
 
 class DecoderRNN(nn.Module):
-    def __init__(self, attnModel, embedding, hiddenSize, outputSize, nLayers=1, dropout=0):
+    def __init__(self, attnModel, embedding, hiddenSize, outputSize, nLayers=1, dropout=0.1):
         super(DecoderRNN, self).__init__()
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.attnModel = attnModel
@@ -271,7 +275,7 @@ class DecoderRNN(nn.Module):
         self.attn = Attn(attnModel, hiddenSize)
 
     def forward(self, inputStep, lastHidden, encoderOutputs):
-        embedded = self.forward(inputStep)
+        embedded = self.embedding(inputStep)
         embedded = self.embeddingDropout(embedded)
         rnnOutput, hidden = self.gru(embedded, lastHidden)
         attnWeights = self.attn(rnnOutput, encoderOutputs)
@@ -293,16 +297,26 @@ class DecoderRNN(nn.Module):
 
 
 class GenerativeModel:
-    def __init__(self, encoder, decoder, encoderOptimizer, decoderOptimizer, batchSize, teacherForcingRatio=1):
+    def __init__(self, encoder, decoder, encoderOptimizer, decoderOptimizer, batchSize, dataProcessor, iterations,
+                 searcher,
+                 modelName='GenerativeModel',
+                 saveDirectory='Models' + os.sep, teacherForcingRatio=1):
+
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
         self.encoder = encoder
         self.decoder = decoder
+        self.searcher = searcher
         self.encoderOptimizer = encoderOptimizer
         self.decoderOptimizer = decoderOptimizer
+        self.dataProcessor = dataProcessor
 
         self.batchSize = batchSize
+        self.iterations = iterations
         self.teacherForcingRatio = teacherForcingRatio
+
+        self.saveDirectory = saveDirectory
+        self.modelName = modelName
 
     def train(self, inputVariable, targetVariable, mask, lengths, maxTargetLength, clip, embedding=None,
               maxLength=MAX_LENGTH):
@@ -359,7 +373,188 @@ class GenerativeModel:
 
         return sum(printLosses) / nTotals
 
+    def trainIterations(self, clip, printEvery=1, saveEvery=500, loadFilename=False):
+        trainingBatches = [
+            self.dataProcessor.batch2TrainData(
+                [random.choice(self.dataProcessor.trimmedPairs) for _ in range(self.batchSize)])
+            for _ in range(self.iterations)]
+
+        print("Initializing...")
+        startIteration = 1
+        printLoss = 0
+
+        if loadFilename:
+            startIteration = checkpoint['iteration'] + 1
+
+        print("Training")
+        for iteration in range(startIteration, self.iterations + 1):
+            trainingBatch = trainingBatches[iteration - 1]
+            inputVariable, lengths, targetVariable, mask, maxTargetLength = trainingBatch
+
+            loss = self.train(inputVariable=inputVariable, targetVariable=targetVariable, mask=mask, lengths=lengths,
+                              maxTargetLength=maxTargetLength, clip=clip)
+            printLoss += loss
+            if iteration % printEvery == 0:
+                printLossAverage = printLoss / printEvery
+                print("Iteration: {}, Percent Complete: {:.1f}%, Average Loss: {:.4f}".format(iteration,
+                                                                                              iteration / self.iterations * 100,
+                                                                                              printLossAverage))
+            if iteration % saveEvery == 0:
+                directory = os.path.join(self.saveDirectory, self.modelName, self.dataProcessor.corpusName,
+                                         '{}-{}_{}'.format(self.encoder.nLayers, self.decoder.nLayers,
+                                                           self.encoder.hiddenSize))
+
+                if not os.path.exists(directory):
+                    os.makedirs(directory)
+
+                torch.save({
+                    'iteration': iteration,
+                    'en': self.encoder.state_dict(),
+                    'de': self.decoder.state_dict(),
+                    'en_opt': self.encoderOptimizer.state_dict(),
+                    'de_opt': self.decoderOptimizer.state_dict(),
+                    'loss': loss,
+                    'voc_dict': self.dataProcessor.voc.__dict__,
+                    'embedding': self.encoder.embedding.state_dict()
+                }, os.path.join(directory, '{}_{}.tar'.format(iteration, 'checkpoint')))
+
+    @staticmethod
+    def indexesFromSentence(voc, sentence):
+        return [voc.word2index[word] for word in sentence.split(' ')] + [EOS_TOKEN]
+
+    def evaluate(self, sentence, maxLength=MAX_LENGTH):
+        indexesBatch = [GenerativeModel.indexesFromSentence(self.dataProcessor.voc, sentence)]
+        lengths = torch.tensor([len(indexes) for indexes in indexesBatch])
+        inputBatch = torch.LongTensor(indexesBatch).transpose(0, 1)
+        inputBatch = inputBatch.to(self.device)
+        lengths = lengths.to('cpu')
+        tokens, scores = self.searcher(inputBatch, lengths, maxLength)
+        decodedWords = [self.dataProcessor.voc.index2word[token.item()] for token in tokens]
+        return decodedWords
+
+    def evaluateInput(self):
+        input_sentence = ''
+        while (1):
+            try:
+                # Get input sentence
+                inputSentence = input('> ')
+                # Check if it is quit case
+                if inputSentence == 'q' or inputSentence == 'quit': break
+                # Normalize sentence
+                inputSentence = self.dataProcessor.normalizeString(inputSentence)
+                # Evaluate sentence
+                outputWords = self.evaluate(inputSentence)
+                # Format and print response sentence
+                outputWords[:] = [x for x in outputWords if not (x == 'EOS' or x == 'PAD')]
+                print('Bot:', ' '.join(outputWords))
+
+            except KeyError:
+                print("Error: Encountered unknown word.")
+
+
+class GreedySearchDecoder(nn.Module):
+    def __init__(self, encoder, decoder):
+        super(GreedySearchDecoder, self).__init__()
+        self.encoder = encoder
+        self.decoder = decoder
+
+    def forward(self, inputSequence, inputLength, maxLength):
+        encoderOutputs, encoderHidden = self.encoder(inputSequence, inputLength)
+        decoderHidden = encoderHidden[:self.decoder.nLayers]
+        decoderInput = torch.ones(1, 1, device=self.decoder.device, dtype=torch.long) * SOS_TOKEN
+        allTokens = torch.zeros([0], device=self.decoder.device, dtype=torch.long)
+        allScores = torch.zeros([0], device=self.decoder.device)
+
+        for _ in range(maxLength):
+            decoderOutput, decoderHidden = self.decoder(decoderInput, decoderHidden, encoderOutputs)
+            decoderScores, decoderInput = torch.max(decoderOutput, dim=1)
+            allTokens = torch.cat((allTokens, decoderInput), dim=0)
+            allScores = torch.cat((allScores, decoderScores), dim=0)
+            decoderInput = torch.unsqueeze(decoderInput, 0)
+
+        return allTokens, allScores
+
 
 if __name__ == '__main__':
-    counselor = DataPreprocessor()
-    counselor.loadData('ConversationalData.csv')
+    # Encoder/Decoder Settings
+    HIDDEN_SIZE = 500
+    MODEL_NAME = 'GenerativeModel'
+    ATTN_MODEL = 'dot'
+    ENCODER_N_LAYERS = 2
+    DECODER_N_LAYERS = 2
+    DROPOUT = 0.1
+    BATCH_SIZE = 64
+    LOAD_FILE = 'Models/GenerativeModel/ConversationalData/2-2_500/500_checkpoint.tar'
+    # LOAD_FILE = None
+
+    # Initialize data processor
+    dataProcessor = DataPreprocessor()
+
+    if LOAD_FILE:
+        checkpoint = torch.load(LOAD_FILE)
+        encoderSD = checkpoint['en']
+        decoderSD = checkpoint['de']
+        encoderOptimizerSD = checkpoint['en_opt']
+        decoderOptimizerSD = checkpoint['de_opt']
+        embeddingSD = checkpoint['embedding']
+        dataProcessor.voc.__dict__ = checkpoint['voc_dict']
+
+    # Initialize Word Embeddings
+    embedding = nn.Embedding(dataProcessor.voc.numWords, HIDDEN_SIZE)
+
+    if LOAD_FILE:
+        embedding.load_state_dict(embeddingSD)
+
+    # Initialize Encoder and Decoder Networks
+    encoder = EncoderRNN(hiddenSize=HIDDEN_SIZE, embedding=embedding, nLayers=ENCODER_N_LAYERS, dropout=DROPOUT)
+    decoder = DecoderRNN(attnModel=ATTN_MODEL, embedding=embedding, hiddenSize=HIDDEN_SIZE, nLayers=DECODER_N_LAYERS,
+                         dropout=DROPOUT, outputSize=dataProcessor.voc.numWords)
+
+    if LOAD_FILE:
+        encoder.load_state_dict(encoderSD)
+        decoder.load_state_dict(decoderSD)
+
+    encoder = encoder.to(dataProcessor.device)
+    decoder = decoder.to(dataProcessor.device)
+
+    # Generative Model Settings
+    CLIP = 50.0
+    TEACHER_FORCING_RATIO = 1.0
+    LEARNING_RATE = 0.0001
+    DECODER_LEARNING_RATIO = 5.0
+    ITERATIONS = 500
+    PRINT_EVERY = 100
+    SAVE_EVERY = 500
+
+    # Dropout in Train Mode
+    encoder.train()
+    decoder.train()
+
+    # Optimizers
+    encoderOptimizer = optim.Adam(encoder.parameters(), lr=LEARNING_RATE)
+    decoderOptimizer = optim.Adam(decoder.parameters(), lr=LEARNING_RATE * DECODER_LEARNING_RATIO)
+
+    # Load existing encoder/decoder network
+    if LOAD_FILE:
+        encoderOptimizer.load_state_dict(encoderOptimizerSD)
+        decoderOptimizer.load_state_dict(decoderOptimizerSD)
+
+    searcher = GreedySearchDecoder(encoder, decoder)
+
+    for state in encoderOptimizer.state.values():
+        for k, v in state.items():
+            if isinstance(v, torch.Tensor):
+                state[k] = v.cuda()
+
+    for state in decoderOptimizer.state.values():
+        for k, v in state.items():
+            if isinstance(v, torch.Tensor):
+                state[k] = v.cuda()
+
+    # Initialize Generative Model
+    generator = GenerativeModel(encoder=encoder, decoder=decoder, encoderOptimizer=encoderOptimizer,
+                                decoderOptimizer=decoderOptimizer, batchSize=BATCH_SIZE, dataProcessor=dataProcessor,
+                                iterations=ITERATIONS, searcher=searcher)
+
+    # generator.trainIterations(clip=CLIP, printEvery=PRINT_EVERY, saveEvery=SAVE_EVERY)
+    generator.evaluateInput()

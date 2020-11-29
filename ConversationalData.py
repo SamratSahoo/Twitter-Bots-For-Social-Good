@@ -8,7 +8,7 @@ from secret import *
 
 
 class RedditScraper:
-    def __init__(self, subreddit, sort='hot', limit=900, mode='w', modComment=False):
+    def __init__(self, subreddit, sort='hot', limit=900, mode='w', modComment=False, filename='ConversationalData.csv'):
         self.reddit = praw.Reddit(client_id=REDDIT_PERSONAL_USE_SCRIPT, client_secret=REDDIT_SECRET,
                                   password=REDDIT_PASSWORD, user_agent=REDDIT_APP_NAME,
                                   username=REDDIT_USERNAME)
@@ -17,6 +17,7 @@ class RedditScraper:
         self.limit = limit
         self.mode = mode
         self.modComment = modComment
+        self.filename = filename
 
     def setSort(self):
         if self.sort == 'new':
@@ -34,20 +35,25 @@ class RedditScraper:
 
     def saveToCSV(self):
         responseReplies = []
+        times = 0
+        total = 0
         for submission in self.setSort():
             try:
                 title = cleanText(submission.title.replace('\n', ' '))
                 comment = cleanText(submission.comments.list()[int(self.modComment)].body.replace('\n', ' '))
 
                 # Filter out shorter responses for better data
-                if len(title) > 60 and len(comment) > 75 and \
-                        not self.checkExisting(string=title, file='Data' + os.sep + 'ConversationalData.csv') \
+                if len(title) > 10 and len(comment) > 35 and \
+                        not self.checkExisting(string=title, file='Data' + os.sep + self.filename) \
                         and [title, comment] not in responseReplies:
                     responseReplies.append([title, comment])
-            except IndexError as e:
-                print(e)
+                    total += 1
+            except Exception as e:
+                times += 1
+                total += 1
+                print(str(e) + " " + str(times) + "/" + str(total))
 
-        with open("Data" + os.sep + "ConversationalData.csv", self.mode, encoding="utf-8") as file:
+        with open("Data" + os.sep + self.filename, self.mode, encoding="utf-8") as file:
             csvWriter = csv.writer(file)
             if self.mode == 'w':
                 csvWriter.writerow(["Initial Text", "Response Text"])
@@ -55,10 +61,28 @@ class RedditScraper:
             file.close()
 
         # Use pandas to remove the empty rows
-        df = pd.read_csv('Data' + os.sep + "ConversationalData.csv", sep=',', index_col=0)
-        df.to_csv('Data' + os.sep + "ConversationalData.csv")
+        df = pd.read_csv('Data' + os.sep + self.filename, sep=',', index_col=0)
+        df.to_csv('Data' + os.sep + self.filename)
+
+    def addDataFromSource(self, path):
+        dataframe = pd.read_csv(path)
+        questionText = dataframe['questionText']
+        answerText = dataframe['answerTitle']
+        qaPairs = []
+        for question, answer in questionText, answerText:
+            qaPairs.append([question, answer])
+
+        with open("Data" + os.sep + self.filename, self.mode, encoding="utf-8") as file:
+            csvWriter = csv.writer(file)
+            if self.mode == 'w':
+                csvWriter.writerow(["Initial Text", "Response Text"])
+            csvWriter.writerows(qaPairs)
+            file.close()
+
+        df = pd.read_csv('Data' + os.sep + self.filename, sep=',', index_col=0)
+        df.to_csv('Data' + os.sep + self.filename)
 
 
 if __name__ == '__main__':
-    scraper = RedditScraper(subreddit='mentalhealth', limit=10, modComment=True, mode='a')
+    scraper = RedditScraper(subreddit='depression_help', limit=50000, modComment=True, mode='a', sort='hot')
     scraper.saveToCSV()
