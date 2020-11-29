@@ -66,11 +66,11 @@ class RedditScraper:
 
     def addDataFromSource(self, path):
         dataframe = pd.read_csv(path)
-        questionText = dataframe['questionText']
-        answerText = dataframe['answerTitle']
+        questionText = list(dataframe['questionText'])
+        answerText = list(dataframe['answerText'])
         qaPairs = []
-        for question, answer in questionText, answerText:
-            qaPairs.append([question, answer])
+        for index, question in enumerate(questionText):
+            qaPairs.append([cleanText(question), cleanText(answerText[index])])
 
         with open("Data" + os.sep + self.filename, self.mode, encoding="utf-8") as file:
             csvWriter = csv.writer(file)
@@ -84,5 +84,7 @@ class RedditScraper:
 
 
 if __name__ == '__main__':
-    scraper = RedditScraper(subreddit='depression_help', limit=50000, modComment=True, mode='a', sort='hot')
-    scraper.saveToCSV()
+    scraper = RedditScraper(subreddit='depression_help', limit=50000, modComment=True, mode='w', sort='hot',
+                            filename='CounselChatData.csv')
+    scraper.addDataFromSource(
+        'https://raw.githubusercontent.com/nbertagnolli/counsel-chat/master/data/20200325_counsel_chat.csv')

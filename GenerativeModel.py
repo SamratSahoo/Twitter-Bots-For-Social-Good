@@ -15,7 +15,7 @@ import itertools
 import math
 import pandas as pd
 
-MAX_LENGTH = 30
+MAX_LENGTH = 1000
 PAD_TOKEN = 0
 SOS_TOKEN = 1
 EOS_TOKEN = 2
@@ -65,7 +65,7 @@ class VOC:
 
 
 class DataPreprocessor:
-    def __init__(self, trainFile='ConversationalData.csv'):
+    def __init__(self, trainFile='CounselChatData.csv'):
         self.trainFile = trainFile
         self.corpusName = self.trainFile.replace('.csv', '')
         # self.data = self.loadData(self.trainFile)
@@ -446,7 +446,7 @@ class GenerativeModel:
                 outputWords = self.evaluate(inputSentence)
                 # Format and print response sentence
                 outputWords[:] = [x for x in outputWords if not (x == 'EOS' or x == 'PAD')]
-                print('Bot:', ' '.join(outputWords))
+                print('Bot:', ' '.join(outputWords).replace('demonstrates', ''))
 
             except KeyError:
                 print("Error: Encountered unknown word.")
@@ -483,8 +483,8 @@ if __name__ == '__main__':
     ENCODER_N_LAYERS = 2
     DECODER_N_LAYERS = 2
     DROPOUT = 0.1
-    BATCH_SIZE = 64
-    LOAD_FILE = 'Models/GenerativeModel/ConversationalData/2-2_500/500_checkpoint.tar'
+    BATCH_SIZE = 16
+    LOAD_FILE = 'Models/500_checkpoint.tar'
     # LOAD_FILE = None
 
     # Initialize data processor

@@ -119,29 +119,13 @@ def getData(query, file, sentimentFactor, count, appendMode, label):
 
 if __name__ == '__main__':
     # Get depression tweets
-    getData(query="Damn Depression", file='trainData.csv', sentimentFactor=-0.3,
-            count=2000, appendMode='a', label=1)
+    queries = ["Damn Depression", "Stressed and Depressed", "Stressed and want to cry", "depressed and want to cry",
+               "I feel miserable today", "I suffer from severe depression", "My depression hurts",
+               "I absolutely hate life"]
 
-    getData(query="Stressed and Depressed", file='trainData.csv', sentimentFactor=-0.3,
-            count=2000, appendMode='a', label=1)
-
-    getData(query="Stressed and want to cry", file='trainData.csv', sentimentFactor=-0.3,
-            count=2000, appendMode='a', label=1)
-
-    getData(query="depressed and want to cry", file='trainData.csv', sentimentFactor=-0.3,
-            count=2000, appendMode='a', label=1)
-
-    getData(query="I feel miserable today", file='trainData.csv', sentimentFactor=-0.3,
-            count=2000, appendMode='a', label=1)
-
-    getData(query="I suffer from severe depression", file='trainData.csv', sentimentFactor=-0.3,
-            count=2000, appendMode='a', label=1)
-
-    getData(query="My depression hurts", file='trainData.csv', sentimentFactor=-0.3,
-            count=2000, appendMode='a', label=1)
-
-    getData(query="I absolutely hate life", file='trainData.csv', sentimentFactor=-0.3,
-            count=2000, appendMode='a', label=1)
+    for query in queries:
+        getData(query=query, file='trainData.csv', sentimentFactor=-0.3,
+                count=2000, appendMode='a', label=1)
 
     # Get regular tweets
     getData(query="the", file='trainData.csv', sentimentFactor=0.2,
