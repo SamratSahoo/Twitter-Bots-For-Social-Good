@@ -33,9 +33,9 @@ The product I am proposing offers a scalable, efficient, and cost-saving approac
 * **Step 1:** Install Python 3.7  (This may work with other versions of Python 3 but Python 3.7 is the only one I have tested)
 * **Step 2:** Run ```pip3 install -r requirements.txt```
 * **Step 3:** Create a Twitter Developer Account and get Twitter Credentials
-* **Step 4:** Create a ```secret.py``` file and add the following variables with their respective variables: API_KEY, API_SECRET_KEY, ACCESS_TOKEN, ACCESS_TOKEN_SECRET, BEARER_TOKEN. These can all be found within the Twitter Developer Portal. More info can be found [here](https://developer.twitter.com/en/apply-for-access)
+* **Step 4:** Create a ```secret.py``` file and add the following variables with their respective variables: ```API_KEY, API_SECRET_KEY, ACCESS_TOKEN, ACCESS_TOKEN_SECRET, BEARER_TOKEN```. These can all be found within the Twitter Developer Portal. More info can be found [here](https://developer.twitter.com/en/apply-for-access)
 * **Step 5:** In ```TwitterBot.py```, change the following line ```botInstance = TwitterBot(uniqueId=1317999444177129476, username="MedellaAI")``` with your respective Twitter account ID and Username.
-* **Step 6:** Create a Reddit Application and add the following Credentials: REDDIT_SECRET, REDDIT_PERSONAL_USE_SCRIPT, REDDIT_APP_NAME, REDDIT_USERNAME, REDDIT_PASSWORD. More info can be found [here](https://github.com/JosephLai241/URS/blob/master/docs/How%20to%20Get%20PRAW%20Credentials.md)
+* **Step 6:** Create a Reddit Application and add the following Credentials: ```REDDIT_SECRET, REDDIT_PERSONAL_USE_SCRIPT, REDDIT_APP_NAME, REDDIT_USERNAME, REDDIT_PASSWORD```. More info can be found [here](https://github.com/JosephLai241/URS/blob/master/docs/How%20to%20Get%20PRAW%20Credentials.md)
 * **Step 7:** Run ```python3 TwitterBot.py```
 
 ### Documentation
