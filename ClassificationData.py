@@ -7,12 +7,17 @@ import langid
 from TextProcess import cleanText
 
 
-def checkExisting(filename, string, tweetList):
+def checkExisting(string, tweetList):
     try:
-        data = pd.read_csv('Data' + os.sep + filename)
+        # Get data from both train and test files
+        data = pd.read_csv('Data' + os.sep + 'testData.csv')
         data2 = pd.read_csv('Data' + os.sep + 'trainData.csv')
+
+        # Grab tweets
         tweets2 = data2._get_column_array(0)
         tweets = data._get_column_array(0)
+
+        # Check if string is in file or tweetList
         return not cleanText(string) in tweets and string not in tweetList and not cleanText(string) in tweets2
     except IndexError as e:
         print(e)
@@ -107,12 +112,18 @@ def saveTweetsToFile(fields, tweets, filename, label=0, append='a'):
 
 
 def getData(query, file, sentimentFactor, count, appendMode, label):
+    # Get tweets based on query
     tweets = getTweets(keyword=query, count=count, sentimentFactor=sentimentFactor, filename=file)
+    # Labels for CSV file
     Labels = ['Tweets', 'Label']
+
+    # If it is training file
     if 'train' in file:
+        # save tweets to testing file
         saveTweetsToFile(fields=Labels, tweets=tweets, filename=file.replace('train', 'test'), label=label,
                          append=appendMode)
     else:
+        # save tweets to training file
         saveTweetsToFile(fields=Labels, tweets=tweets, filename=file.replace('test', 'train'), label=label,
                          append=appendMode)
 
@@ -123,6 +134,7 @@ if __name__ == '__main__':
                "I feel miserable today", "I suffer from severe depression", "My depression hurts",
                "I absolutely hate life"]
 
+    # Iterate through queries and get tweets for depression
     for query in queries:
         getData(query=query, file='trainData.csv', sentimentFactor=-0.3,
                 count=2000, appendMode='a', label=1)

@@ -15,30 +15,48 @@ class DepressionClassifier():
         self.embedding = "https://tfhub.dev/google/nnlm-en-dim50/2"
         self.hubLayer = hub.KerasLayer(self.embedding, input_shape=[],
                                        dtype=tf.string, trainable=True)
+        # Model name
         self.modelName = 'model.h5'
+
+        # Use not saved model
         if not loadMode:
             # Actual Model built with Keras
             self.model = self.initModel()
             self.saveModel()
         else:
+            # Use saved model
             self.model = self.loadModel()
 
+        # Print model details
         self.model.summary()
 
     def loadData(self, fileName):
+        # Grab Data
         data = pd.read_csv('Data' + os.sep + fileName)
+        # Fix dataframe
         data.fillna(value='', inplace=True)
         data = data.sample(frac=1)
+
+        # Returns Tweet + Label
         return data._get_column_array(0), data._get_column_array(1)
 
     def initModel(self):
+        # Uses Keras Sequential Model
         model = tf.keras.Sequential()
+
+        # Hub Layer = Pretrained Model
         model.add(self.hubLayer)
+
+        # Fine tune model
         model.add(tf.keras.layers.Dense(512, activation='relu'))
         model.add(tf.keras.layers.Dense(256))
+
+        # Dropout to avoid overfitting
         model.add(tf.keras.layers.Dropout(0.5))
         model.add(tf.keras.layers.Dense(16))
         model.add(tf.keras.layers.Dense(1))
+
+        # Compile with Binary Cross Entropy
         model.compile(optimizer='adam',
                       loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
                       metrics=['accuracy'])
@@ -47,28 +65,35 @@ class DepressionClassifier():
                             epochs=5,
                             validation_split=0.2,
                             verbose=1)
+
+        # Return Model
         return model
 
     def evaluateModel(self):
+        # Print results based on test data
         results = self.model.evaluate(self.testData, self.testLabels, verbose=1)
 
+    # Predict depression based on text
     def predictDepression(self, text):
+        # clean text
         text = cleanText(text)
+        # Fix the vector dimension problems
         text = tf.expand_dims(tf.convert_to_tensor(text), axis=0)
+        #  > -1.0 I found was a safer threshold than > 0
         return self.model.predict(text)[0][0] > -1.0
 
+    # Save model to file
     def saveModel(self):
         self.model.save('Models' + os.sep + self.modelName)
 
+    # Load model from file
     def loadModel(self):
         return tf.keras.models.load_model('Models' + os.sep + self.modelName,
                                           custom_objects={'KerasLayer': hub.KerasLayer})
 
 
 if __name__ == '__main__':
-    # Step 1: Convert All words to numbers (Lookup table??)
-    # Step 2: Convert numbers to multidimensional embeddings
-    # Step 3: Feed through Neural Net
+    # Initialize Classifier
     classifier = DepressionClassifier(loadMode=True)
-    print(classifier.predictDepression("I am so sad to hear of your loss"))
+    print(classifier.predictDepression("Papa is sad today because he forgot mama"))
     classifier.evaluateModel()

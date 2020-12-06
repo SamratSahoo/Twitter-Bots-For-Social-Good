@@ -1,6 +1,5 @@
-*.csv
 *.h5
-Models/GenerativeModel/
+Models/
 *.tar
 
 # Byte-compiled / optimized / DLL files

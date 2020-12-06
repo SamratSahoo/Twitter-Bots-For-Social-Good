@@ -20,12 +20,14 @@ def tokenizeText(doc):
     return " ".join(tokens)
 
 
+# Removes emojis from text
 def removeEmojis(text):
     allChars = [str for str in text]
     emojiList = [c for c in allChars if c in emoji.UNICODE_EMOJI]
     return ' '.join([str for str in text.split() if not any(i in str for i in emojiList)])
 
 
+# Cleans text of noisy characters using regular expressions
 def cleanText(text):
     text = text.replace("\n", ' ').replace('#', '')
     text = re.sub('@[^\s]+', '', text)
