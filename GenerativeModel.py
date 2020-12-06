@@ -1,21 +1,17 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 import torch
 import torch.nn as nn
-from torch.jit import script, trace
 from torch import optim
 import torch.nn.functional as F
-import csv
 import random
 import re
 import os
 import unicodedata
 from io import open
-import codecs
 import itertools
-import math
 import pandas as pd
 
-MAX_LENGTH = 1000
+MAX_LENGTH = 25
 PAD_TOKEN = 0
 SOS_TOKEN = 1
 EOS_TOKEN = 2
@@ -100,6 +96,7 @@ class DataPreprocessor:
         )
 
     def normalizeString(self, string):
+        string = str(string)
         string = self.unicodeToAscii(string.lower().strip())
         string = re.sub(r"([.!?])", r"\1", string)
         string = re.sub(r"[^a-zA-Z.!?]+", r" ", string)
@@ -111,8 +108,8 @@ class DataPreprocessor:
         dataframe = pd.read_csv('Data' + os.sep + filename, delimiter=',')
         for index, row in dataframe.iterrows():
             pairs.append([
-                self.normalizeString(row['Initial Text']),
-                self.normalizeString(row['Response Text'])
+                self.normalizeString(row['Response Text']),
+                self.normalizeString(row['Initial Text'])
             ])
 
         voc = VOC(corpusName)
@@ -399,6 +396,8 @@ class GenerativeModel:
                 print("Iteration: {}, Percent Complete: {:.1f}%, Average Loss: {:.4f}".format(iteration,
                                                                                               iteration / self.iterations * 100,
                                                                                               printLossAverage))
+                printLoss = 0
+
             if iteration % saveEvery == 0:
                 directory = os.path.join(self.saveDirectory, self.modelName, self.dataProcessor.corpusName,
                                          '{}-{}_{}'.format(self.encoder.nLayers, self.decoder.nLayers,
@@ -423,14 +422,21 @@ class GenerativeModel:
         return [voc.word2index[word] for word in sentence.split(' ')] + [EOS_TOKEN]
 
     def evaluate(self, sentence, maxLength=MAX_LENGTH):
-        indexesBatch = [GenerativeModel.indexesFromSentence(self.dataProcessor.voc, sentence)]
-        lengths = torch.tensor([len(indexes) for indexes in indexesBatch])
-        inputBatch = torch.LongTensor(indexesBatch).transpose(0, 1)
-        inputBatch = inputBatch.to(self.device)
-        lengths = lengths.to('cpu')
-        tokens, scores = self.searcher(inputBatch, lengths, maxLength)
-        decodedWords = [self.dataProcessor.voc.index2word[token.item()] for token in tokens]
-        return decodedWords
+        try:
+            try:
+                indexesBatch = [GenerativeModel.indexesFromSentence(self.dataProcessor.voc, sentence)]
+                lengths = torch.tensor([len(indexes) for indexes in indexesBatch])
+                inputBatch = torch.LongTensor(indexesBatch).transpose(0, 1)
+                inputBatch = inputBatch.to(self.device)
+                lengths = lengths.to('cpu')
+                tokens, scores = self.searcher(inputBatch, lengths, maxLength)
+                decodedWords = [self.dataProcessor.voc.index2word[token.item()] for token in tokens]
+                return decodedWords
+            except KeyError as e:
+                sentence = sentence.replace(e.args[0], '').strip()
+                return self.evaluate(sentence)
+        except RecursionError as e:
+            return ['I', 'am', 'not', 'sure', 'what', 'you', 'mean', 'EOS']
 
     def evaluateInput(self):
         input_sentence = ''
@@ -446,9 +452,9 @@ class GenerativeModel:
                 outputWords = self.evaluate(inputSentence)
                 # Format and print response sentence
                 outputWords[:] = [x for x in outputWords if not (x == 'EOS' or x == 'PAD')]
-                print('Bot:', ' '.join(outputWords).replace('demonstrates', ''))
+                print('Bot:', ' '.join(outputWords))
 
-            except KeyError:
+            except KeyError as e:
                 print("Error: Encountered unknown word.")
 
 
@@ -477,18 +483,18 @@ class GreedySearchDecoder(nn.Module):
 
 if __name__ == '__main__':
     # Encoder/Decoder Settings
-    HIDDEN_SIZE = 500
+    HIDDEN_SIZE = 400
     MODEL_NAME = 'GenerativeModel'
     ATTN_MODEL = 'dot'
     ENCODER_N_LAYERS = 2
     DECODER_N_LAYERS = 2
     DROPOUT = 0.1
-    BATCH_SIZE = 16
-    LOAD_FILE = 'Models/500_checkpoint.tar'
+    BATCH_SIZE = 64
+    LOAD_FILE = 'Models/RedditData_1500.tar'
     # LOAD_FILE = None
 
     # Initialize data processor
-    dataProcessor = DataPreprocessor()
+    dataProcessor = DataPreprocessor(trainFile='ConversationalData.csv')
 
     if LOAD_FILE:
         checkpoint = torch.load(LOAD_FILE)
@@ -520,9 +526,9 @@ if __name__ == '__main__':
     # Generative Model Settings
     CLIP = 50.0
     TEACHER_FORCING_RATIO = 1.0
-    LEARNING_RATE = 0.0001
+    LEARNING_RATE = 0.001
     DECODER_LEARNING_RATIO = 5.0
-    ITERATIONS = 500
+    ITERATIONS = 1500
     PRINT_EVERY = 100
     SAVE_EVERY = 500
 
@@ -557,4 +563,6 @@ if __name__ == '__main__':
                                 iterations=ITERATIONS, searcher=searcher)
 
     # generator.trainIterations(clip=CLIP, printEvery=PRINT_EVERY, saveEvery=SAVE_EVERY)
+    encoder.eval()
+    decoder.eval()
     generator.evaluateInput()

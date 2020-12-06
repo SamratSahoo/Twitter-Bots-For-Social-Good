@@ -23,7 +23,7 @@ class DepressionClassifier():
         else:
             self.model = self.loadModel()
 
-        # self.model.summary()
+        self.model.summary()
 
     def loadData(self, fileName):
         data = pd.read_csv('Data' + os.sep + fileName)
@@ -55,7 +55,7 @@ class DepressionClassifier():
     def predictDepression(self, text):
         text = cleanText(text)
         text = tf.expand_dims(tf.convert_to_tensor(text), axis=0)
-        return self.model.predict(text)[0][0] > 1.0
+        return self.model.predict(text)[0][0] > -1.0
 
     def saveModel(self):
         self.model.save('Models' + os.sep + self.modelName)
@@ -69,6 +69,6 @@ if __name__ == '__main__':
     # Step 1: Convert All words to numbers (Lookup table??)
     # Step 2: Convert numbers to multidimensional embeddings
     # Step 3: Feed through Neural Net
-    classifer = DepressionClassifier(loadMode=True)
-    print(classifer.predictDepression("I am so sad to hear of your loss"))
-    classifer.evaluateModel()
+    classifier = DepressionClassifier(loadMode=True)
+    print(classifier.predictDepression("I am so sad to hear of your loss"))
+    classifier.evaluateModel()
