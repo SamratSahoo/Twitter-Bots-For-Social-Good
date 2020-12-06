@@ -4,7 +4,7 @@ import time
 import tweepy
 from secret import *
 from Classification import DepressionClassifier
-import Chatbot.eliza
+import ElizaChatbot.eliza
 
 
 class TwitterBot():
@@ -16,8 +16,8 @@ class TwitterBot():
         self.api = tweepy.API(self.auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
         self.username = username
         self.classifier = DepressionClassifier(loadMode=True)
-        self.chatbot = Chatbot.eliza.Eliza()
-        self.chatbot.load('Chatbot' + os.sep + 'doctor.txt')
+        self.chatbot = ElizaChatbot.eliza.Eliza()
+        self.chatbot.load('ElizaChatbot' + os.sep + 'doctor.txt')
 
     '''
     Method to send a Tweet
