@@ -80,7 +80,7 @@ class DepressionClassifier():
         # Fix the vector dimension problems
         text = tf.expand_dims(tf.convert_to_tensor(text), axis=0)
         #  > -1.0 I found was a safer threshold than > 0
-        return self.model.predict(text)[0][0] > -1.0
+        return self.model.predict(text)[0][0] > -2.0
 
     # Save model to file
     def saveModel(self):
@@ -95,5 +95,5 @@ class DepressionClassifier():
 if __name__ == '__main__':
     # Initialize Classifier
     classifier = DepressionClassifier(loadMode=True)
-    print(classifier.predictDepression("Papa is sad today because he forgot mama"))
+    print(classifier.predictDepression("This world is such a sad and depressing world to live in T_T"))
     classifier.evaluateModel()
